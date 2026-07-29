@@ -18,6 +18,7 @@ import {
   UserPlus,
   Loader2,
   X,
+  LogOut,
 } from "lucide-react";
 
 function Chat() {
@@ -369,7 +370,7 @@ function Chat() {
     if (!text.trim() || !selectedUser) return;
 
     try {
-      await API.post("/messages/send", {
+      const res = await API.post("/messages/send", {
         receiver: selectedUser._id,
         text,
       });
@@ -475,6 +476,12 @@ function Chat() {
     } finally {
       setIsRewriting(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    socket.disconnect();
+    window.location.href = "/";
   };
 
   const isUserOnline = (userId) => onlineUserIds.has(userId);
@@ -738,6 +745,17 @@ function Chat() {
             </div>
           )}
         </div>
+
+        {/* Logout Button */}
+        <div className="p-3 border-t border-white/5 bg-white/[0.01]">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all duration-200 active:scale-[0.98]"
+          >
+            <LogOut size={16} />
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Chat Area */}
@@ -846,17 +864,13 @@ function Chat() {
                                 }}
                                 className="flex items-center gap-2 w-full px-3.5 py-2 text-xs font-medium text-slate-200 hover:bg-white/10 transition-colors"
                               >
-                                ✏️ Edit
+                                Edit
                               </button>
                               <button
                                 onClick={() => deleteForMe(msg._id)}
-                                disabled={deletingId === msg._id}
-                                className="flex items-center gap-2 w-full px-3.5 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-2 w-full px-3.5 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
                               >
-                                <Trash2 size={13} />
-                                {deletingId === msg._id
-                                  ? "Deleting..."
-                                  : "Delete for me"}
+                                Delete for me
                               </button>
                             </div>
                           )}
@@ -865,219 +879,131 @@ function Chat() {
 
                       {/* Message Bubble */}
                       <div
-                        className={`max-w-[68%] px-4.5 py-3 rounded-2xl text-sm shadow-lg leading-relaxed ${
+                        className={`max-w-md px-4 py-3 rounded-2xl shadow-md ${
                           isMine
-                            ? "bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white rounded-br-md shadow-violet-900/20"
-                            : "bg-[#141b2d] text-slate-100 border border-white/10 rounded-bl-md shadow-black/20"
+                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-br-none"
+                            : "bg-[#161d2f] text-slate-100 rounded-bl-none border border-white/5"
                         }`}
                       >
-                        <p className="break-words whitespace-pre-wrap font-normal">
+                        <p className="text-sm font-normal leading-relaxed break-words">
                           {msg.text}
                         </p>
-                        <div
-                          className={`flex items-center justify-end gap-1 text-[10px] font-medium mt-1.5 ${
-                            isMine ? "text-violet-200/80" : "text-slate-400"
-                          }`}
-                        >
-                          {msg.edited && (
-                            <span className="italic mr-0.5 opacity-80">
-                              edited
-                            </span>
-                          )}
-                          <span>{formatTime(msg.createdAt)}</span>
+                        <div className="flex items-center justify-end gap-1.5 mt-1 opacity-70">
+                          <span className="text-[10px]">
+                            {formatTime(msg.createdAt)}
+                          </span>
                           {isMine && (
-                            <span className="ml-0.5">
+                            <span>
                               {msg.status === "seen" ? (
-                                <CheckCheck
-                                  size={14}
-                                  className="text-sky-300"
-                                />
-                              ) : msg.status === "delivered" ? (
-                                <CheckCheck
-                                  size={14}
-                                  className="text-white/70"
-                                />
+                                <CheckCheck size={13} className="text-sky-300" />
                               ) : (
-                                <Check size={14} className="text-white/70" />
+                                <Check size={13} />
                               )}
                             </span>
                           )}
                         </div>
                       </div>
-
-                      {/* Menu trigger button for received messages */}
-                      {!isMine && (
-                        <div className="relative self-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuId(
-                                openMenuId === msgId ? null : msgId,
-                              );
-                            }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-violet-300 hover:bg-white/5"
-                          >
-                            <MoreVertical size={15} />
-                          </button>
-
-                          {openMenuId === msgId && (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              className="absolute left-full top-0 ml-2 z-30 w-38 rounded-xl bg-[#161d2f]/95 backdrop-blur-xl shadow-2xl border border-white/10 overflow-hidden py-1"
-                            >
-                              <button
-                                onClick={() => deleteForMe(msg._id)}
-                                disabled={deletingId === msg._id}
-                                className="flex items-center gap-2 w-full px-3.5 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                              >
-                                <Trash2 size={13} />
-                                {deletingId === msg._id
-                                  ? "Deleting..."
-                                  : "Delete for me"}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
-                  <div className="w-16 h-16 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-center mb-3 text-slate-500 shadow-inner">
-                    <MessageCircle size={32} />
-                  </div>
-                  <p className="text-base font-semibold text-slate-300">
-                    No messages here yet
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Say hi to start the conversation!
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                  <MessageCircle size={40} className="text-violet-500/40" />
+                  <p className="text-sm font-medium">
+                    No messages yet. Say hi!
                   </p>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input / Editing Banner Bar */}
-            <div className="px-6 py-4 bg-[#0e1320]/90 backdrop-blur-2xl border-t border-white/10 relative z-20">
-              {/* Edit Mode Banner */}
-              {editingMessageId && (
-                <div className="flex items-center justify-between mb-3 px-4 py-2 bg-violet-500/15 border border-violet-500/30 rounded-xl text-xs font-semibold text-violet-300 shadow-sm">
-                  <span className="flex items-center gap-2">
-                    ✏️ Editing message...
-                  </span>
-                  <button
-                    onClick={() => {
-                      setEditingMessageId(null);
-                      setEditingText("");
-                    }}
-                    className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-
-              {/* Emoji Picker Popup */}
+            {/* Input Area */}
+            <div className="p-4 bg-[#0e1320]/90 backdrop-blur-2xl border-t border-white/10 relative">
               {showEmojiPicker && (
                 <div
                   ref={emojiPickerRef}
                   className="absolute bottom-20 left-6 z-50 shadow-2xl rounded-2xl overflow-hidden border border-white/10"
                 >
-                  <EmojiPicker
-                    theme="dark"
-                    onEmojiClick={onEmojiClick}
-                    lazyLoadEmojis
-                  />
+                  <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" />
                 </div>
               )}
 
-              {/* Input Control Box */}
-              <div className="flex items-center gap-2 bg-white/[0.04] p-2 rounded-2xl border border-white/10 focus-within:border-violet-500/50 focus-within:ring-1 focus-within:ring-violet-500/30 transition-all duration-200">
+              <div className="flex items-center gap-2">
                 <button
-                  type="button"
                   onClick={() => setShowEmojiPicker((prev) => !prev)}
-                  className="p-2.5 text-slate-400 hover:text-violet-300 hover:bg-white/5 rounded-xl transition-colors shrink-0"
-                  title="Choose Emoji"
+                  className="p-2.5 rounded-xl text-slate-400 hover:text-violet-300 hover:bg-white/5 transition-colors"
                 >
                   <Smile size={20} />
                 </button>
-
-                <button
-                  type="button"
-                  className="p-2.5 text-slate-400 hover:text-violet-300 hover:bg-white/5 rounded-xl transition-colors shrink-0"
-                  title="Attach file"
-                >
+                <button className="p-2.5 rounded-xl text-slate-400 hover:text-violet-300 hover:bg-white/5 transition-colors">
                   <Paperclip size={20} />
                 </button>
+                <button
+                  onClick={handleAiRewrite}
+                  disabled={isRewriting || !text.trim()}
+                  className="p-2.5 rounded-xl text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-40"
+                  title="Rewrite with AI"
+                >
+                  {isRewriting ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={20} />
+                  )}
+                </button>
+
+                <input
+                  type="text"
+                  value={editingMessageId ? editingText : text}
+                  onChange={(e) =>
+                    editingMessageId
+                      ? setEditingText(e.target.value)
+                      : handleTextChange(e)
+                  }
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    editingMessageId
+                      ? "Edit message..."
+                      : "Type a message..."
+                  }
+                  className="flex-1 bg-white/[0.04] border border-white/5 rounded-2xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-400 outline-none focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/30 transition-all"
+                />
 
                 {editingMessageId ? (
-                  <input
-                    type="text"
-                    value={editingText}
-                    onChange={(e) => setEditingText(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Edit your message..."
-                    className="grow bg-transparent outline-none text-sm px-2 text-slate-100 placeholder:text-slate-400 font-normal"
-                    autoFocus
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={text}
-                    onChange={handleTextChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type a message..."
-                    className="grow bg-transparent outline-none text-sm px-2 text-slate-100 placeholder:text-slate-400 font-normal"
-                  />
-                )}
-
-                {/* AI Rewrite Button (only in normal draft mode) */}
-                {!editingMessageId && (
                   <button
-                    type="button"
-                    onClick={handleAiRewrite}
-                    disabled={!text.trim() || isRewriting}
-                    title="AI Magic Rewrite"
-                    className="p-2.5 text-slate-400 hover:text-fuchsia-300 hover:bg-fuchsia-500/10 rounded-xl transition-colors shrink-0 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:bg-transparent"
+                    onClick={() => {
+                      setEditingMessageId(null);
+                      setEditingText("");
+                    }}
+                    className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 transition-all"
                   >
-                    {isRewriting ? (
-                      <Loader2
-                        size={19}
-                        className="animate-spin text-fuchsia-400"
-                      />
-                    ) : (
-                      <Sparkles size={19} className="text-fuchsia-400" />
-                    )}
+                    <X size={18} />
                   </button>
-                )}
+                ) : null}
 
-                {/* Submit Button */}
                 <button
-                  type="button"
-                  onClick={editingMessageId ? handleEditMessage : sendMessage}
+                  onClick={
+                    editingMessageId ? handleEditMessage : sendMessage
+                  }
                   disabled={
                     editingMessageId ? !editingText.trim() : !text.trim()
                   }
-                  className="p-2.5 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white rounded-xl shadow-md shadow-violet-600/30 transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none shrink-0"
+                  className="p-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white shadow-lg shadow-violet-600/30 transition-all duration-200 disabled:opacity-40 active:scale-95"
                 >
-                  <Send size={17} />
+                  <Send size={18} />
                 </button>
               </div>
             </div>
           </>
         ) : (
-          /* Empty Chat View */
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 flex items-center justify-center mb-5 text-violet-400 shadow-xl">
-              <MessageCircle size={38} />
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
+            <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center text-violet-400 shadow-xl">
+              <MessageCircle size={32} />
             </div>
-            <h3 className="text-xl font-bold text-slate-200 mb-2">
-              Welcome to ChatterBox
+            <h3 className="text-lg font-semibold text-slate-200">
+              Select a contact to start chatting
             </h3>
-            <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
-              Select a conversation from the sidebar or search for users to
-              start chatting instantly.
+            <p className="text-xs text-slate-400 max-w-xs text-center leading-relaxed">
+              Choose someone from your sidebar or search for a username to begin a new conversation.
             </p>
           </div>
         )}

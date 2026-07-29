@@ -4,6 +4,7 @@ import { AnimatePresence } from "framer-motion";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Chat from "./pages/Chat";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -13,8 +14,7 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/chat" element={<Chat />} />
-      </Routes>
+        <Route path="/chat" element={<ProtectedRoute><Chat /> </ProtectedRoute> } /></Routes>
     </AnimatePresence>
   );
 }
