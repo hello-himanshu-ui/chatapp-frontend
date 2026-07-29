@@ -90,9 +90,25 @@ function Chat() {
             message.receiver === currentUser._id));
 
       if (isCurrentChat) {
-        // Message belongs to the open chat — just append it, no toast
-        setMessages((prev) => [...prev, message]);
-      } else if (message.receiver === currentUser._id) {
+  setMessages((prev) => {
+    const tempIndex = prev.findIndex(
+      (msg) =>
+        msg._id.toString().length >= 13 &&
+        msg.sender === message.sender &&
+        msg.receiver === message.receiver &&
+        msg.text === message.text
+    );
+
+    if (tempIndex !== -1) {
+      const updated = [...prev];
+      updated[tempIndex] = message; // temporary message ko real DB message se replace karo
+      return updated;
+    }
+
+    return [...prev, message];
+  });
+}
+       else if (message.receiver === currentUser._id) {
         // Message is for a different chat (or none open) AND the logged-in
         // user is the receiver — notify only in this case
         const senderName = message.senderInfo?.name || "New Message";
@@ -370,9 +386,24 @@ function Chat() {
     if (!text.trim() || !selectedUser) return;
 
     try {
+      const messageText = text;
+
+setMessages((prev) => [
+  ...prev,
+  {
+    _id: Date.now().toString(),
+    sender: currentUser._id,
+    receiver: selectedUser._id,
+    text: messageText,
+    createdAt: new Date().toISOString(),
+    status: "sent",
+  },
+]);
+
+setText("");
       const res = await API.post("/messages/send", {
         receiver: selectedUser._id,
-        text,
+        text:messageText
       });
 
       if (currentUser) {
@@ -385,7 +416,7 @@ function Chat() {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      setText("");
+     
     } catch (error) {
       console.log(error);
     }
